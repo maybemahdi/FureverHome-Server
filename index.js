@@ -50,6 +50,8 @@ async function run() {
     // db collections
     const db = client.db("fureverHome");
     const userCollection = db.collection("users");
+    const petCollection = db.collection("pets");
+    const adoptReqCollection = db.collection("adoptRequests");
 
     // auth related api
     app.post("/jwt", async (req, res) => {
@@ -83,7 +85,9 @@ async function run() {
 
     app.post("/users", async (req, res) => {
       const user = req.body;
-      const isExist = await userCollection.findOne({ userEmail: user?.userEmail });
+      const isExist = await userCollection.findOne({
+        userEmail: user?.userEmail,
+      });
       if (isExist) return res.send("Already Exist");
       const result = await userCollection.insertOne(user);
       //welcome email for new users:
@@ -91,6 +95,31 @@ async function run() {
       //     subject: "Welcome to StayVista",
       //     message: `Thank You for your interest on StayVista, Hope you will find your Destination. Have A good Time!`,
       //   });
+      res.send(result);
+    });
+
+    // get all pets
+    app.get("/pets", async (req, res) => {
+      const result = await petCollection.find({ adopted: false }).toArray();
+      res.send(result);
+    });
+
+    //get single cat
+    app.get("/pet/:id", async (req, res) => {
+      const id = req.params?.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await petCollection.findOne(query);
+      res.send(result);
+    });
+
+    //adoption request
+    app.post("/adoptionRequests", async (req, res) => {
+      const info = req?.body;
+      const { petID, email } = info;
+      const isExistReq = await adoptReqCollection.findOne({ petID, email });
+      if (isExistReq)
+        return res.send({ message: "Request Already Sent to Provider" });
+      const result = await adoptReqCollection.insertOne(info);
       res.send(result);
     });
 
