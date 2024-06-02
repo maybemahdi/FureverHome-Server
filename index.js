@@ -52,6 +52,7 @@ async function run() {
     const userCollection = db.collection("users");
     const petCollection = db.collection("pets");
     const adoptReqCollection = db.collection("adoptRequests");
+    const donationCampaignsCollection = db.collection("donationCampaigns");
 
     // auth related api
     app.post("/jwt", async (req, res) => {
@@ -120,6 +121,24 @@ async function run() {
       if (isExistReq)
         return res.send({ message: "Request Already Sent to Provider" });
       const result = await adoptReqCollection.insertOne(info);
+      res.send(result);
+    });
+
+    //get all donation campaigns
+    app.get("/donationCampaigns", async (req, res) => {
+      const result = await donationCampaignsCollection
+        .find()
+        .sort({ lastDateOfDonation: -1 })
+        .toArray();
+      res.send(result);
+    });
+
+    //get single donation campaigns
+    app.get("/donationCampaign/:id", async (req, res) => {
+      const id = req.params?.id;
+      const result = await donationCampaignsCollection.findOne({
+        _id: new ObjectId(id),
+      });
       res.send(result);
     });
 
