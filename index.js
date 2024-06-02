@@ -7,6 +7,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const jwt = require("jsonwebtoken");
 
 const port = process.env.PORT || 5000;
+const stripe = require("stripe")(process.env.STRIPE_SK);
 
 // middleware
 const corsOptions = {
@@ -22,7 +23,7 @@ app.use(cookieParser());
 // Verify Token Middleware
 const verifyToken = async (req, res, next) => {
   const token = req.cookies?.token;
-  console.log(token);
+  // console.log(token);
   if (!token) {
     return res.status(401).send({ message: "unauthorized access" });
   }
@@ -53,6 +54,7 @@ async function run() {
     const petCollection = db.collection("pets");
     const adoptReqCollection = db.collection("adoptRequests");
     const donationCampaignsCollection = db.collection("donationCampaigns");
+    const donateCollection = db.collection("donations");
 
     // auth related api
     app.post("/jwt", async (req, res) => {
@@ -101,7 +103,13 @@ async function run() {
 
     // get all pets
     app.get("/pets", async (req, res) => {
-      const result = await petCollection.find({ adopted: false }).toArray();
+      const category = req?.query?.category;
+      const query = { adopted: false };
+      if (category !== "undefined") {
+        query.petCategory =
+          category.charAt(0).toUpperCase() + category.slice(1);
+      }
+      const result = await petCollection.find(query).toArray();
       res.send(result);
     });
 
@@ -114,7 +122,7 @@ async function run() {
     });
 
     //adoption request
-    app.post("/adoptionRequests", async (req, res) => {
+    app.post("/adoptionRequests", verifyToken, async (req, res) => {
       const info = req?.body;
       const { petID, email } = info;
       const isExistReq = await adoptReqCollection.findOne({ petID, email });
@@ -125,7 +133,7 @@ async function run() {
     });
 
     //get all donation campaigns
-    app.get("/donationCampaigns", async (req, res) => {
+    app.get("/donationCampaigns", verifyToken, async (req, res) => {
       const result = await donationCampaignsCollection
         .find()
         .sort({ lastDateOfDonation: -1 })
@@ -134,11 +142,54 @@ async function run() {
     });
 
     //get single donation campaigns
-    app.get("/donationCampaign/:id", async (req, res) => {
+    app.get("/donationCampaign/:id", verifyToken, async (req, res) => {
       const id = req.params?.id;
       const result = await donationCampaignsCollection.findOne({
         _id: new ObjectId(id),
       });
+      res.send(result);
+    });
+
+    //get payment intent
+    app.post("/create-payment-intent", verifyToken, async (req, res) => {
+      const amount = req?.body?.amount;
+      const amountInCent = parseFloat(amount) * 100;
+      // console.log(amountInCent)
+      // Create a PaymentIntent with the order amount and currency
+      const { client_secret } = await stripe.paymentIntents.create({
+        amount: amountInCent,
+        currency: "usd",
+        // In the latest version of the API, specifying the `automatic_payment_methods` parameter is optional because Stripe enables its functionality by default.
+        automatic_payment_methods: {
+          enabled: true,
+        },
+      });
+      // console.log(client_secret)
+      res.send({ clientSecret: client_secret });
+    });
+
+    //post donated info in donateCollection
+    app.post("/donate", verifyToken, async (req, res) => {
+      const donateInfo = req.body;
+      // console.log(donateInfo)
+      const result = await donateCollection.insertOne(donateInfo);
+      res.send(result);
+    });
+
+    //patch totalDonate in campaigns collection
+    app.patch("/updateTotalDonation/:id", verifyToken, async (req, res) => {
+      const { id } = req?.params;
+      const { donatedAmount } = req?.body;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          donatedAmount: donatedAmount,
+        },
+      };
+      const result = await donationCampaignsCollection.updateOne(
+        filter,
+        updateDoc
+      );
       res.send(result);
     });
 
