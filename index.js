@@ -106,8 +106,7 @@ async function run() {
       const category = req?.query?.category;
       const query = { adopted: false };
       if (category !== "undefined") {
-        query.petCategory =
-          category.charAt(0).toUpperCase() + category.slice(1);
+        query.petCategory = category.charAt(0).toUpperCase() + category.slice(1);
       }
       const result = await petCollection.find(query).toArray();
       res.send(result);
@@ -190,6 +189,27 @@ async function run() {
         filter,
         updateDoc
       );
+      res.send(result);
+    });
+
+    //get user role
+    app.get("/role/:email", verifyToken, async (req, res) => {
+      const { email } = req?.params;
+      const { role } = await userCollection.findOne({ userEmail: email });
+      res.send(role);
+    });
+
+    //post a pet data to pet collection
+    app.post("/pets", verifyToken, async (req, res) => {
+      const petData = req?.body;
+      const result = await petCollection.insertOne(petData);
+      res.send(result);
+    });
+
+    //get added pets based on user
+    app.get("/pets/:email", verifyToken, async (req, res) => {
+      const email = req?.params?.email;
+      const result = await petCollection.find({ provider: email }).toArray();
       res.send(result);
     });
 
