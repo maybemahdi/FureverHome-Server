@@ -106,7 +106,8 @@ async function run() {
       const category = req?.query?.category;
       const query = { adopted: false };
       if (category !== "undefined") {
-        query.petCategory = category.charAt(0).toUpperCase() + category.slice(1);
+        query.petCategory =
+          category.charAt(0).toUpperCase() + category.slice(1);
       }
       const result = await petCollection.find(query).toArray();
       res.send(result);
@@ -210,6 +211,42 @@ async function run() {
     app.get("/pets/:email", verifyToken, async (req, res) => {
       const email = req?.params?.email;
       const result = await petCollection.find({ provider: email }).toArray();
+      res.send(result);
+    });
+
+    //put pet update
+    app.put("/pets/:id", verifyToken, async (req, res) => {
+      const id = req?.params?.id;
+      const petData = req?.body;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          ...petData,
+        },
+      };
+      const result = await petCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    //delete a pet
+    app.delete("/pet/:id", async (req, res) => {
+      const id = req?.params?.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await petCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    //update adopt status
+    app.patch("/pet/:id", async (req, res) => {
+      const id = req?.params?.id;
+      const { adopted } = req?.body;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          adopted: adopted,
+        },
+      };
+      const result = await petCollection.updateOne(filter, updateDoc);
       res.send(result);
     });
 
