@@ -250,6 +250,80 @@ async function run() {
       res.send(result);
     });
 
+    //create a campaign
+    app.post("/campaigns", async (req, res) => {
+      const petInfo = req?.body;
+      const result = await donationCampaignsCollection.insertOne(petInfo);
+      res.send(result);
+    });
+
+    //get created campaigns based on user
+    app.get("/myCamp/:email", async (req, res) => {
+      const email = req?.params?.email;
+      const query = { creator: email };
+      const result = await donationCampaignsCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    //get selected campaign for edit
+    app.get("/campaign/:id", async (req, res) => {
+      const id = req?.params?.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await donationCampaignsCollection.findOne(query);
+      res.send(result);
+    });
+
+    //update user's created donation
+    app.put("/campaigns/:id", async (req, res) => {
+      const id = req?.params?.id;
+      const petData = req?.body;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          ...petData,
+        },
+      };
+      const result = await donationCampaignsCollection.updateOne(
+        filter,
+        updateDoc
+      );
+      res.send(result);
+    });
+
+    //pause campaign
+    app.patch("/pauseCampaign/:id", async (req, res) => {
+      const id = req?.params?.id;
+      const { status } = req?.body;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          status: status,
+        },
+      };
+      const result = await donationCampaignsCollection.updateOne(
+        filter,
+        updateDoc
+      );
+      res.send(result);
+    });
+    
+    //resume campaign
+    app.patch("/resumeCampaign/:id", async (req, res) => {
+      const id = req?.params?.id;
+      const { status } = req?.body;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          status: status,
+        },
+      };
+      const result = await donationCampaignsCollection.updateOne(
+        filter,
+        updateDoc
+      );
+      res.send(result);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
