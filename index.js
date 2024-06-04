@@ -215,7 +215,7 @@ async function run() {
     });
 
     //put pet update
-    app.put("/pets/:id", verifyToken, async (req, res) => {
+    app.put("/pets/:id", verifyToken, verifyToken, async (req, res) => {
       const id = req?.params?.id;
       const petData = req?.body;
       const filter = { _id: new ObjectId(id) };
@@ -229,7 +229,7 @@ async function run() {
     });
 
     //delete a pet
-    app.delete("/pet/:id", async (req, res) => {
+    app.delete("/pet/:id", verifyToken, async (req, res) => {
       const id = req?.params?.id;
       const query = { _id: new ObjectId(id) };
       const result = await petCollection.deleteOne(query);
@@ -237,7 +237,7 @@ async function run() {
     });
 
     //update adopt status
-    app.patch("/pet/:id", async (req, res) => {
+    app.patch("/pet/:id", verifyToken, async (req, res) => {
       const id = req?.params?.id;
       const { adopted } = req?.body;
       const filter = { _id: new ObjectId(id) };
@@ -251,14 +251,14 @@ async function run() {
     });
 
     //create a campaign
-    app.post("/campaigns", async (req, res) => {
+    app.post("/campaigns", verifyToken, async (req, res) => {
       const petInfo = req?.body;
       const result = await donationCampaignsCollection.insertOne(petInfo);
       res.send(result);
     });
 
     //get created campaigns based on user
-    app.get("/myCamp/:email", async (req, res) => {
+    app.get("/myCamp/:email", verifyToken, async (req, res) => {
       const email = req?.params?.email;
       const query = { creator: email };
       const result = await donationCampaignsCollection.find(query).toArray();
@@ -266,7 +266,7 @@ async function run() {
     });
 
     //get selected campaign for edit
-    app.get("/campaign/:id", async (req, res) => {
+    app.get("/campaign/:id", verifyToken, async (req, res) => {
       const id = req?.params?.id;
       const query = { _id: new ObjectId(id) };
       const result = await donationCampaignsCollection.findOne(query);
@@ -274,7 +274,7 @@ async function run() {
     });
 
     //update user's created donation
-    app.put("/campaigns/:id", async (req, res) => {
+    app.put("/campaigns/:id", verifyToken, async (req, res) => {
       const id = req?.params?.id;
       const petData = req?.body;
       const filter = { _id: new ObjectId(id) };
@@ -291,7 +291,7 @@ async function run() {
     });
 
     //pause campaign
-    app.patch("/pauseCampaign/:id", async (req, res) => {
+    app.patch("/pauseCampaign/:id", verifyToken, async (req, res) => {
       const id = req?.params?.id;
       const { status } = req?.body;
       const filter = { _id: new ObjectId(id) };
@@ -306,9 +306,9 @@ async function run() {
       );
       res.send(result);
     });
-    
+
     //resume campaign
-    app.patch("/resumeCampaign/:id", async (req, res) => {
+    app.patch("/resumeCampaign/:id", verifyToken, async (req, res) => {
       const id = req?.params?.id;
       const { status } = req?.body;
       const filter = { _id: new ObjectId(id) };
@@ -321,6 +321,38 @@ async function run() {
         filter,
         updateDoc
       );
+      res.send(result);
+    });
+
+    //get donation data for modal
+    app.get("/donationData/:id", verifyToken, async (req, res) => {
+      const id = req.params?.id;
+      const donationsInfo = await donateCollection
+        .find(
+          { donateId: id },
+          { projection: { donarName: 1, donarEmail: 1, donatedAmount: 1 } }
+        )
+        .toArray();
+      res.send(donationsInfo);
+    });
+
+    //get donations(myDonation) based on user
+    app.get("/myDonations/:email", verifyToken, async (req, res) => {
+      const email = req.params?.email;
+      const donations = await donateCollection
+        .find(
+          { donarEmail: email },
+          { projection: { petImage: 1, petName: 1, donatedAmount: 1 } }
+        )
+        .toArray();
+      res.send(donations);
+    });
+
+    //refund and delete donate
+    app.delete("/deleteDonate/:id", verifyToken, async (req, res) => {
+      const id = req.params?.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await donateCollection.deleteOne(query);
       res.send(result);
     });
 
