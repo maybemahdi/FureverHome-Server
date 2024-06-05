@@ -56,6 +56,18 @@ async function run() {
     const donationCampaignsCollection = db.collection("donationCampaigns");
     const donateCollection = db.collection("donations");
 
+    // middlewares
+    // verify admin middleware
+    const verifyAdmin = async (req, res, next) => {
+      const user = req.user;
+      const query = { userEmail: user?.email };
+      const result = await userCollection.findOne(query);
+      if (!result || result?.role !== "Admin") {
+        return res.status(401).send({ message: "unauthorized access!!" });
+      }
+      next();
+    };
+
     // auth related api
     app.post("/jwt", async (req, res) => {
       const user = req.body;
@@ -86,13 +98,23 @@ async function run() {
       }
     });
 
-    app.post("/users", async (req, res) => {
+    app.put("/users", async (req, res) => {
       const user = req.body;
+      // console.log(user)
       const isExist = await userCollection.findOne({
         userEmail: user?.userEmail,
       });
-      if (isExist) return res.send("Already Exist");
-      const result = await userCollection.insertOne(user);
+      // console.log(isExist);
+      if (isExist && isExist.userName !== null)
+        return res.send("Already Exist");
+      const updateDoc = {
+        $set: {
+          ...user,
+        },
+      };
+      const filter = { userEmail: user?.userEmail };
+      const options = { upsert: true };
+      const result = await userCollection.updateOne(filter, updateDoc, options);
       //welcome email for new users:
       //   sendMail(user?.email, {
       //     subject: "Welcome to StayVista",
@@ -413,6 +435,12 @@ async function run() {
         },
       };
       const result = await adoptReqCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    //get all users for admin
+    app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
+      const result = await userCollection.find().toArray();
       res.send(result);
     });
 
