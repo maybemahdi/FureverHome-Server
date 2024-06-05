@@ -356,6 +356,66 @@ async function run() {
       res.send(result);
     });
 
+    //get user's adoption requests on their pet
+    app.get("/myAdoptionRequests/:email", verifyToken, async (req, res) => {
+      const email = req.params?.email;
+      const query = { provider: email };
+      const reqInfo = await adoptReqCollection
+        .find(query, {
+          projection: {
+            petName: 1,
+            petImage: 1,
+            petID: 1,
+            name: 1,
+            adopted: 1,
+            email: 1,
+            phone: 1,
+            address: 1,
+            status: 1,
+          },
+        })
+        .toArray();
+      res.send(reqInfo);
+    });
+
+    //update adopted status
+    app.patch("/updateAdoptedStatus", verifyToken, async (req, res) => {
+      const { id } = req?.body;
+      const { petID } = req?.body;
+      const updateDoc = {
+        $set: {
+          adopted: true,
+        },
+      };
+      const pet = await petCollection.updateOne(
+        {
+          _id: new ObjectId(petID),
+        },
+        updateDoc
+      );
+      const adoptReq = await adoptReqCollection.updateOne(
+        {
+          _id: new ObjectId(id),
+        },
+        updateDoc
+      );
+      res.send({ pet, adoptReq });
+    });
+
+    //reject adopt req
+    app.patch("/rejectAdoptReq/:id", async (req, res) => {
+      const id = req?.params?.id;
+      const { status } = req?.body;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          status: status,
+        },
+      };
+      const result = await adoptReqCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
