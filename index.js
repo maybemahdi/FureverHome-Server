@@ -444,6 +444,25 @@ async function run() {
       res.send(result);
     });
 
+    //make admin feature
+    app.patch("/user/:email", verifyToken, verifyAdmin, async (req, res) => {
+      const email = req.params?.email;
+      const filter = { userEmail: email };
+      const updateDoc = {
+        $set: {
+          role: "Admin",
+        },
+      };
+      const result = await userCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    //get all pets
+    app.get("/allPets", verifyToken, verifyAdmin, async (req, res) => {
+      const result = await petCollection.find().toArray();
+      res.send(result);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
