@@ -126,12 +126,16 @@ async function run() {
     // get all pets
     app.get("/pets", async (req, res) => {
       const category = req?.query?.category;
+      const { per_page } = req?.query;
       const query = { adopted: false };
       if (category !== "undefined") {
         query.petCategory =
           category.charAt(0).toUpperCase() + category.slice(1);
       }
-      const result = await petCollection.find(query).toArray();
+      const result = await petCollection
+        .find(query)
+        .limit(parseFloat(per_page))
+        .toArray();
       res.send(result);
     });
 
@@ -156,8 +160,13 @@ async function run() {
 
     //get all donation campaigns
     app.get("/donationCampaigns", verifyToken, async (req, res) => {
+      const { per_page } = req?.query;
+      const { page } = req?.query;
+      console.log(per_page);
       const result = await donationCampaignsCollection
         .find()
+        // .skip(parseFloat(page) * parseFloat(per_page))
+        .limit(parseFloat(per_page))
         .sort({ lastDateOfDonation: -1 })
         .toArray();
       res.send(result);
@@ -460,6 +469,20 @@ async function run() {
     //get all pets
     app.get("/allPets", verifyToken, verifyAdmin, async (req, res) => {
       const result = await petCollection.find().toArray();
+      res.send(result);
+    });
+
+    //get all donations
+    app.get("/campaigns", verifyToken, verifyAdmin, async (req, res) => {
+      const result = await donationCampaignsCollection.find().toArray();
+      res.send(result);
+    });
+
+    //delete a donation campaign
+    app.delete("/campaign/:id", verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params?.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await donationCampaignsCollection.deleteOne(query);
       res.send(result);
     });
 
