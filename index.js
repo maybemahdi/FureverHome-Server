@@ -162,7 +162,7 @@ async function run() {
     app.get("/donationCampaigns", verifyToken, async (req, res) => {
       const { per_page } = req?.query;
       const { page } = req?.query;
-      console.log(per_page);
+      // console.log(per_page);
       const result = await donationCampaignsCollection
         .find()
         // .skip(parseFloat(page) * parseFloat(per_page))
