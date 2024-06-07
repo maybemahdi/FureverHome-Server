@@ -9,6 +9,8 @@ const jwt = require("jsonwebtoken");
 const port = process.env.PORT || 5000;
 const stripe = require("stripe")(process.env.STRIPE_SK);
 
+const nodemailer = require("nodemailer");
+
 // middleware
 const corsOptions = {
   origin: ["http://localhost:5173", "http://localhost:5174"],
@@ -34,6 +36,44 @@ const verifyToken = async (req, res, next) => {
     }
     req.user = decoded;
     next();
+  });
+};
+
+//nodemailer (send mail)
+const sendMail = (emailAddress, emailData) => {
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false, // Use `true` for port 465, `false` for all other ports
+    auth: {
+      user: process.env.TRANSPORTER_EMAIL,
+      pass: process.env.TRANSPORTER_PASS,
+    },
+  });
+  // verify connection configuration
+  transporter.verify(function (error, success) {
+    if (error) {
+      console.log(error);
+    } else {
+      console.log("Server is ready to take our messages");
+    }
+  });
+
+  //mail body
+  const mailBody = {
+    from: `"FureverHome" <${process.env.TRANSPORTER_EMAIL}>`,
+    to: emailAddress,
+    subject: emailData.subject,
+    html: emailData.message,
+  };
+
+  transporter.sendMail(mailBody, (error, info) => {
+    if (error) {
+      console.log(error);
+    } else {
+      console.log("Email Sent: " + info.response);
+    }
   });
 };
 
@@ -116,10 +156,10 @@ async function run() {
       const options = { upsert: true };
       const result = await userCollection.updateOne(filter, updateDoc, options);
       //welcome email for new users:
-      //   sendMail(user?.email, {
-      //     subject: "Welcome to StayVista",
-      //     message: `Thank You for your interest on StayVista, Hope you will find your Destination. Have A good Time!`,
-      //   });
+      sendMail(user?.userEmail, {
+        subject: "Welcome to FureverHome",
+        message: `Thank You for your interest on FureverHome, Hope you will enjoy our services. Have A good Time!`,
+      });
       res.send(result);
     });
 
@@ -129,12 +169,15 @@ async function run() {
       const { per_page } = req?.query;
       const { search } = req.query;
       const { filter } = req.query;
-      const query = { adopted: false, petName: { $regex: search, $options: "i" } };
+      const query = {
+        adopted: false,
+        petName: { $regex: search, $options: "i" },
+      };
       if (category !== "undefined") {
         query.petCategory =
           category.charAt(0).toUpperCase() + category.slice(1);
       }
-      if(filter && filter !== "undefined") query.petCategory = filter;
+      if (filter && filter !== "undefined") query.petCategory = filter;
       const result = await petCollection
         .find(query)
         .limit(parseFloat(per_page))
@@ -208,6 +251,24 @@ async function run() {
       const donateInfo = req.body;
       // console.log(donateInfo)
       const result = await donateCollection.insertOne(donateInfo);
+      // send email to person who donated
+      sendMail(donateInfo?.donarEmail, {
+        subject: "Donation Successful!",
+        message: `You've successfully Donated to a Campaign in FureverHome.
+        Donated Amount: ${donateInfo?.donatedAmount}$
+        Transaction Id: ${donateInfo?.transactionId}`,
+      });
+
+      //send email to person who asked for donations
+      sendMail(donateInfo?.creator, {
+        subject: "You just received a Donation!",
+        message: `You've successfully received a donation for Pet Name: ${donateInfo?.petName},
+        Donar Name: ${donateInfo?.donarName},
+        Donar Email: ${donateInfo?.donarEmail}.
+        Donated Amount: ${donateInfo?.donatedAmount}$
+        Transaction Id: ${donateInfo?.transactionId}`,
+      });
+
       res.send(result);
     });
 
