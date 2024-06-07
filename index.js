@@ -127,14 +127,18 @@ async function run() {
     app.get("/pets", async (req, res) => {
       const category = req?.query?.category;
       const { per_page } = req?.query;
-      const query = { adopted: false };
+      const { search } = req.query;
+      const { filter } = req.query;
+      const query = { adopted: false, petName: { $regex: search, $options: "i" } };
       if (category !== "undefined") {
         query.petCategory =
           category.charAt(0).toUpperCase() + category.slice(1);
       }
+      if(filter && filter !== "undefined") query.petCategory = filter;
       const result = await petCollection
         .find(query)
         .limit(parseFloat(per_page))
+        .sort({ timestamp: -1 })
         .toArray();
       res.send(result);
     });
@@ -167,7 +171,7 @@ async function run() {
         .find()
         // .skip(parseFloat(page) * parseFloat(per_page))
         .limit(parseFloat(per_page))
-        .sort({ lastDateOfDonation: -1 })
+        .sort({ timestamp: -1 })
         .toArray();
       res.send(result);
     });
