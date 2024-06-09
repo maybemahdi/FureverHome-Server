@@ -212,7 +212,6 @@ async function run() {
     //get all donation campaigns
     app.get("/donationCampaigns", verifyToken, async (req, res) => {
       const { per_page } = req?.query;
-      const { page } = req?.query;
       // console.log(per_page);
       const result = await donationCampaignsCollection
         .find()
@@ -442,7 +441,14 @@ async function run() {
       const donations = await donateCollection
         .find(
           { donarEmail: email },
-          { projection: { petImage: 1, petName: 1, donatedAmount: 1 } }
+          {
+            projection: {
+              petImage: 1,
+              petName: 1,
+              donatedAmount: 1,
+              donateId: 1,
+            },
+          }
         )
         .toArray();
       res.send(donations);
@@ -454,6 +460,26 @@ async function run() {
       const query = { _id: new ObjectId(id) };
       const result = await donateCollection.deleteOne(query);
       res.send(result);
+    });
+
+    //update total donated amount
+    app.patch("/updateTotalDonatedAmount/:id", async (req, res) => {
+      // update donated amount
+      const donateId = req?.params?.id;
+      const { donatedAmount } = req?.body;
+      const filter = { _id: new ObjectId(donateId) };
+      const itemForPatch = await donationCampaignsCollection.findOne(
+        filter,
+        { projection: { donatedAmount: 1 } }
+      );
+      // console.log(donateId);
+      const updateDoc = {
+        $set: {
+          donatedAmount: itemForPatch.donatedAmount - donatedAmount,
+        },
+      };
+      const result = await donationCampaignsCollection.updateOne(filter, updateDoc);
+      res.send(result)
     });
 
     //get user's adoption requests on their pet
